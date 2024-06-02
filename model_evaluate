@@ -43,7 +43,7 @@ def load_images(directory):
     return images
 
 # Load the generated images
-generated_images_dir = ""
+generated_images_dir = "IDM-VTON/teaser2.png"
 generated_images = load_images(generated_images_dir)
 
 # Load the ground truth images
