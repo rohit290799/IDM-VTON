@@ -1,0 +1,93 @@
+import os
+import torch
+import torchvision
+from torchvision import transforms
+from torch.utils.data import DataLoader
+from PIL import Image
+from tqdm import tqdm
+import numpy as np
+import lpips
+import torchvision.models as models
+from skimage.metrics import structural_similarity as ssim
+import math
+
+# Define the function to calculate PSNR
+def calculate_psnr(img1, img2):
+    mse = np.mean((img1 - img2) ** 2)
+    if mse == 0:
+        return float('inf')
+    return 20 * math.log10(255.0 / math.sqrt(mse))
+
+# Define the function to calculate SSIM
+def calculate_ssim(img1, img2):
+    return ssim(img1, img2, multichannel=True)
+
+# Initialize LPIPS loss
+loss_fn = lpips.LPIPS(net='alex')
+
+# Prepare the transform
+transform = transforms.Compose([
+    transforms.Resize((1024, 768)),
+    transforms.ToTensor()
+])
+
+# Function to load images
+def load_images(directory):
+    images = []
+    for filename in os.listdir(directory):
+        if filename.endswith(".png") or filename.endswith(".jpg"):
+            img_path = os.path.join(directory, filename)
+            img = Image.open(img_path).convert("RGB")
+            img = transform(img)
+            images.append(img)
+    return images
+
+# Load the generated images
+generated_images_dir = ""
+generated_images = load_images(generated_images_dir)
+
+# Load the ground truth images
+ground_truth_images_dir = "path_to_ground_truth_images"
+ground_truth_images = load_images(ground_truth_images_dir)
+
+# Ensure the number of images match
+assert len(generated_images) == len(ground_truth_images), "Mismatch in number of images"
+
+# Calculate metrics
+fid_model = models.inception_v3(pretrained=True, transform_input=False).eval()
+fid_model = fid_model.to('cuda')
+psnr_values = []
+ssim_values = []
+lpips_values = []
+
+for gen_img, gt_img in tqdm(zip(generated_images, ground_truth_images), total=len(generated_images)):
+    gen_img = gen_img.unsqueeze(0).to('cuda')
+    gt_img = gt_img.unsqueeze(0).to('cuda')
+
+    # Convert to numpy for PSNR and SSIM
+    gen_img_np = gen_img.squeeze(0).permute(1, 2, 0).cpu().numpy() * 255.0
+    gt_img_np = gt_img.squeeze(0).permute(1, 2, 0).cpu().numpy() * 255.0
+
+    # PSNR
+    psnr = calculate_psnr(gen_img_np, gt_img_np)
+    psnr_values.append(psnr)
+
+    # SSIM
+    ssim_value = calculate_ssim(gen_img_np, gt_img_np)
+    ssim_values.append(ssim_value)
+
+    # LPIPS
+    lpips_value = loss_fn(gen_img, gt_img).item()
+    lpips_values.append(lpips_value)
+
+# Calculate mean metrics
+mean_psnr = np.mean(psnr_values)
+mean_ssim = np.mean(ssim_values)
+mean_lpips = np.mean(lpips_values)
+
+print(f"Mean PSNR: {mean_psnr}")
+print(f"Mean SSIM: {mean_ssim}")
+print(f"Mean LPIPS: {mean_lpips}")
+
+# Note: FID calculation requires pre-computed statistics and is more complex to implement in this snippet.
+# For FID, you may use an existing implementation like from TensorFlow's API or other libraries.
