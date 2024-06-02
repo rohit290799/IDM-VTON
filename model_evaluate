@@ -43,11 +43,11 @@ def load_images(directory):
     return images
 
 # Load the generated images
-generated_images_dir = "IDM-VTON/teaser2.png"
+generated_images_dir = "teaser2.png"
 generated_images = load_images(generated_images_dir)
 
 # Load the ground truth images
-ground_truth_images_dir = "path_to_ground_truth_images"
+ground_truth_images_dir = "teaser.png"
 ground_truth_images = load_images(ground_truth_images_dir)
 
 # Ensure the number of images match
